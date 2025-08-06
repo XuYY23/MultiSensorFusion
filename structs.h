@@ -67,3 +67,88 @@ struct SensorCalibration {
     std::chrono::microseconds time_offset;  // 时间偏移
     double time_drift;                      // 时间漂移(ppm)，传感器的时间测量会随运行时间产生累积误差（漂移），通常用 ppm（百万分之一） 表示。例如，0.1ppm 表示每运行 1 秒，时间误差增加 0.1 微秒（1 秒 × 0.1/1e6）
 };
+
+// 单个TensorRT执行上下文，注意智能指针无法被拷贝
+struct Context {
+	TRTUniquePtr<nvinfer1::IExecutionContext> context;	// TensorRT执行上下文
+	TRTUniquePtr<cudaStream_t>		stream;				// CUDA流
+	TRTUniquePtr<cudaEvent_t>		event;				// CUDA事件
+	void* hostOutput;					// 主机输出数据
+	bool  isHostOutputUseCudaMemcpy;	// 主机输出数据是否使用cudaMemcpy分配
+	void* deviceInput;					// 设备输入数据
+	void* deviceOutput;					// 设备输出数据
+
+	Context() : context(nullptr), stream(nullptr), event(nullptr), hostOutput(nullptr), deviceInput(nullptr), deviceOutput(nullptr), isHostOutputUseCudaMemcpy(false) {};
+
+	// 移动构造函数
+	Context(Context&& other) noexcept :
+		context(std::move(other.context)),
+		stream(std::move(other.stream)),
+		event(std::move(other.event)),
+		hostOutput(other.hostOutput),
+		deviceInput(other.deviceInput),
+		deviceOutput(other.deviceOutput) {
+		other.hostOutput = nullptr;
+		other.deviceInput = nullptr;
+		other.deviceOutput = nullptr;
+	}
+
+	// 移动赋值运算符
+	Context& operator=(Context&& other) noexcept {
+		if (this != &other) {
+			context = std::move(other.context);
+			stream = std::move(other.stream);
+			event = std::move(other.event);
+			if (hostOutput != nullptr) {
+				if(isHostOutputUseCudaMemcpy == true) {
+					cudaFree(hostOutput);
+				} else {
+					delete[] hostOutput;
+				}
+			}
+			if (deviceInput != nullptr) {
+				cudaFree(deviceInput);
+			}
+			if (deviceOutput != nullptr) {
+				cudaFree(deviceOutput);
+			}
+			hostOutput = other.hostOutput;
+			deviceInput = other.deviceInput;
+			deviceOutput = other.deviceOutput;
+			other.hostOutput = nullptr;
+			other.deviceInput = nullptr;
+			other.deviceOutput = nullptr;
+		}
+		return *this;
+	}
+
+	~Context() {
+		// 注意！！！，用cudaMemcpy系列函数分配的内存必须用cudaFree释放
+		if (hostOutput != nullptr) {
+			if (isHostOutputUseCudaMemcpy == true) {
+				cudaFree(hostOutput);
+			} else {
+				delete[] hostOutput;
+			}
+			hostOutput = nullptr;
+		}
+		if (deviceInput != nullptr) {
+			cudaFree(deviceInput);
+			deviceInput = nullptr;
+		}
+		if (deviceOutput != nullptr) {
+			cudaFree(deviceOutput);
+			deviceOutput = nullptr;
+		}
+	}
+};
+
+// 图像检测结果
+struct ImageDetectionResult {
+	struct Box {
+		cv::Rect rect;					// 目标检测框
+		int class_id;					// 类别ID
+		float confidence;				// 置信度
+	};
+	std::vector<Box> boxes;				// 存储检测结果的目标框
+};

@@ -61,12 +61,18 @@ json JsonOutput::detectionToJson(const Detection& detection) {
     j["class"] = static_cast<int>(detection.detected_class);
     j["class_name"] = [&]() {
         switch (detection.detected_class) {
-            case ObjectClass::PERSON: return "PERSON";
-            case ObjectClass::VEHICLE: return "VEHICLE";
-            case ObjectClass::BICYCLE: return "BICYCLE";
-            case ObjectClass::ANIMAL: return "ANIMAL";
-            case ObjectClass::STATIC_OBSTACLE: return "STATIC_OBSTACLE";
-            default: return "UNKNOWN";
+            case ObjectClass::PERSON: 
+                return "PERSON";
+            case ObjectClass::VEHICLE: 
+                return "VEHICLE";
+            case ObjectClass::BICYCLE: 
+                return "BICYCLE";
+            case ObjectClass::ANIMAL: 
+                return "ANIMAL";
+            case ObjectClass::STATIC_OBSTACLE: 
+                return "STATIC_OBSTACLE";
+            default: 
+                return "UNKNOWN";
         }
     }();
     j["class_confidence"] = detection.class_confidence;
@@ -107,12 +113,24 @@ json JsonOutput::fusedObjectToJson(const FusedObject& object) {
     for (const auto& [cls, prob] : object.class_probabilities) {
         std::string cls_name;
         switch (cls) {
-            case ObjectClass::PERSON: cls_name = "PERSON"; break;
-            case ObjectClass::VEHICLE: cls_name = "VEHICLE"; break;
-            case ObjectClass::BICYCLE: cls_name = "BICYCLE"; break;
-            case ObjectClass::ANIMAL: cls_name = "ANIMAL"; break;
-            case ObjectClass::STATIC_OBSTACLE: cls_name = "STATIC_OBSTACLE"; break;
-            default: cls_name = "UNKNOWN"; break;
+            case ObjectClass::PERSON: 
+                cls_name = "PERSON"; 
+                break;
+            case ObjectClass::VEHICLE: 
+                cls_name = "VEHICLE";
+                break;
+            case ObjectClass::BICYCLE: 
+                cls_name = "BICYCLE";
+                break;
+            case ObjectClass::ANIMAL: 
+                cls_name = "ANIMAL"; 
+                break;
+            case ObjectClass::STATIC_OBSTACLE: 
+                cls_name = "STATIC_OBSTACLE"; 
+                break;
+            default: 
+                cls_name = "UNKNOWN";
+                break;
         }
         j["class_probabilities"][cls_name] = prob;
     }
