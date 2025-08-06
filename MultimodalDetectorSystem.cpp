@@ -1,0 +1,113 @@
+#include "MultimodalDetectorSystem.h"
+
+MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, SensorCalibration>& calibrations) : 
+    aligner_(calibrations), 
+    use_custom_target_time_(false) {
+}
+
+// 添加新的检测结果
+void MultimodalDetectorSystem::addDetections(const std::vector<Detection>& detections) {
+    // 对每个检测结果进行时间对齐，并添加到队列
+    for (const auto& det : detections) {
+        Detection aligned = det;
+        aligner_.alignTemporal(aligned);  // 先进行时间对齐
+        current_detections_.push_back(aligned);
+    }
+}
+
+// 处理当前所有检测结果
+void MultimodalDetectorSystem::processDetections() {
+    if (current_detections_.empty()) {
+        return;
+    }
+
+    // 确定目标时间戳
+    Timestamp target_time;
+    if (use_custom_target_time_) {
+        target_time = target_timestamp_;
+    } else {
+        // 使用最新检测结果的时间戳
+        target_time = current_detections_[0].timestamp;
+        for (const auto& det : current_detections_) {
+            if (det.timestamp > target_time) {
+                target_time = det.timestamp;
+            }
+        }
+    }
+
+    // 1. 时间同步：将所有检测结果插值到目标时间点
+    std::vector<Detection> synchronized_detections = aligner_.synchronizeDetections(current_detections_, target_time);
+
+    // 2. 多目标关联
+    fused_objects_ = associator_.associateTargets(synchronized_detections, fused_objects_, target_time);
+
+    // 3. 对每个目标进行特征和决策融合
+    for (auto& obj : fused_objects_) {
+        if (!obj.associated_detections.empty()) {
+            // 决策级融合
+            obj.class_probabilities = fusion_.fuseDecisions(obj.associated_detections, obj.has_category_conflict);
+
+            if (obj.has_category_conflict == true) {
+                // 这里应该重新检测
+				continue;  // 如果存在类别冲突，则跳过该目标
+            }
+
+            // 特征级融合
+            obj.fused_features = fusion_.fuseFeatures(obj.associated_detections);
+
+            // 如果是新目标，需要融合位置和速度
+            if (obj.is_new) {
+                Eigen::Matrix3d pos_cov, vel_cov;
+                obj.position = fusion_.fusePositions(obj.associated_detections, pos_cov);
+                obj.velocity = fusion_.fuseVelocities(obj.associated_detections, vel_cov);
+                obj.position_covariance = pos_cov;
+                obj.velocity_covariance = vel_cov;
+            }
+        }
+    }
+
+    // 4. 确定最终类别
+    for (auto& obj : fused_objects_) {
+        if (obj.class_probabilities.empty()) {
+            obj.final_class = ObjectClass::UNKNOWN;
+            obj.final_class_confidence = 0.0;
+            continue;
+        }
+
+        // 找到概率最高的类别
+        auto max_it = std::max_element(
+            obj.class_probabilities.begin(),
+            obj.class_probabilities.end(),
+            [](const auto& a, const auto& b) { return a.second < b.second; }
+        );
+
+        // 设定置信度阈值（如0.5），低于阈值则标记为UNKNOWN
+        const double CONFIDENCE_THRESHOLD = 0.5;
+        if (max_it->second >= CONFIDENCE_THRESHOLD) {
+            obj.final_class = max_it->first;
+            obj.final_class_confidence = max_it->second;
+        } else {
+            obj.final_class = ObjectClass::UNKNOWN;
+            obj.final_class_confidence = max_it->second;
+        }
+    }
+
+    // 清空当前检测队列
+    current_detections_.clear();
+}
+
+// 获取当前融合结果
+const std::vector<FusedObject>& MultimodalDetectorSystem::getFusedObjects() const {
+    return fused_objects_;
+}
+
+// 保存融合结果到JSON文件
+bool MultimodalDetectorSystem::saveResults(const std::string& filename) {
+    return json_output_.saveResults(fused_objects_, filename);
+}
+
+// 设置时间同步的目标时间
+void MultimodalDetectorSystem::setTargetTimestamp(Timestamp target_time) {
+    target_timestamp_ = target_time;
+    use_custom_target_time_ = true;
+}
