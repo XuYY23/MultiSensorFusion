@@ -31,6 +31,21 @@ public:
 		return value;
 	}
 
+	T pop(std::atomic<bool>& flag) {
+		std::unique_lock<std::mutex> lock(m_mtx);
+		// 等待直到队列不为空或停止推理标志被设置
+		m_cv.wait(lock, [&] {
+				return !m_queue.empty() || flag.load() == true;
+			}
+		);
+		if (flag.load() == true) {
+			return T();	// 如果停止推理标志被设置，返回默认值
+		}
+		T value = std::move(m_queue.front());
+		m_queue.pop();
+		return value;
+	}
+
 	bool empty() {
 		std::lock_guard<std::mutex> lock(m_mtx);
 		return m_queue.empty();

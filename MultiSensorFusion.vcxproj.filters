@@ -39,6 +39,18 @@
     <ClInclude Include="ConstantVelocityModel.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="MutexValue.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TensorRT.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="ThreadSafeQueue.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="TensorRTAsync.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="enums.cpp">
@@ -72,6 +84,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="ConstantVelocityModel.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TensorRT.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="TensorRTAsync.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

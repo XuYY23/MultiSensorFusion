@@ -1,14 +1,21 @@
 #include "TensorRT.h"
+#include "TensorRTAsync.h"
 
 TensorRT::TensorRT(const std::string& model_path, int inputW, int inputH, float conf_threshold, float nms_threshold) : 
+	is_engine_loaded_(false),
+	model_path_(model_path),
 	input_width_(inputW),
 	input_height_(inputH),
 	conf_threshold_(conf_threshold), 
 	nms_threshold_(nms_threshold) {
-	createEngine(model_path);
+	
 }
 
 ImageDetectionResult TensorRT::detect(const cv::Mat& image) {
+    if (is_engine_loaded_ == false) {
+        createEngine(model_path_);
+        is_engine_loaded_ = true;
+    }
 	preprocess(image, contexts_[0]);
     void* buffers[] = { contexts_[0].deviceInput, contexts_[0].deviceOutput };
     if (!contexts_[0].context->executeV2(buffers)) {  

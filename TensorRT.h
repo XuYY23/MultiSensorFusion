@@ -12,6 +12,9 @@ class TensorRTLogger : public nvinfer1::ILogger {
 };
 
 class TensorRT {
+protected:
+	bool is_engine_loaded_;							// 是否加载了引擎
+	std::string model_path_;						// 模型路径
 	std::vector<std::string> class_names_;			// 类别名称列表
 	int input_width_;								// 输入宽度
 	int input_height_;								// 输入高度
@@ -31,9 +34,12 @@ public:
 	void setClassNames(const std::vector<std::string>& class_names) {
 		class_names_ = class_names;
 	}
-	ImageDetectionResult detect(const cv::Mat& image);
+	virtual ImageDetectionResult detect(const cv::Mat& image);
+	virtual ~TensorRT() {
+		contexts_.clear();
+	}
 
-private:
+protected:
 	virtual void createEngine(const std::string& model_path);
 	virtual bool loadEngine(const std::string& engine_path);
 	virtual void buildEngine(const std::string& model_path, const std::string& engine_path);

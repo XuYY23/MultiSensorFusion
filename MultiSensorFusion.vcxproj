@@ -136,7 +136,11 @@
     <ClInclude Include="JsonOutput.h" />
     <ClInclude Include="MultimodalDetectorSystem.h" />
     <ClInclude Include="MultiTargetAssociator.h" />
+    <ClInclude Include="MutexValue.h" />
     <ClInclude Include="SpatioTemporalAligner.h" />
+    <ClInclude Include="TensorRT.h" />
+    <ClInclude Include="TensorRTAsync.h" />
+    <ClInclude Include="ThreadSafeQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ConstantVelocityModel.cpp" />
@@ -150,6 +154,8 @@
     <ClCompile Include="SpatioTemporalAligner.cpp" />
     <ClCompile Include="structs.h" />
     <ClCompile Include="FeatureExtractor.h" />
+    <ClCompile Include="TensorRT.cpp" />
+    <ClCompile Include="TensorRTAsync.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
