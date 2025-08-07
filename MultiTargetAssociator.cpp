@@ -1,33 +1,25 @@
-#include "MultiTargetAssociator.h"
+ï»¿#include "MultiTargetAssociator.h"
 #include "FeatureExtractor.h"
+#include "Config.h"
 
 MultiTargetAssociator::MultiTargetAssociator() {
-    // ³õÊ¼»¯Ä¿±êID¼ÆÊıÆ÷
+    // åˆå§‹åŒ–ç›®æ ‡IDè®¡æ•°å™¨
     next_global_id_ = 1;
-
-    // ÉèÖÃ¹ØÁª²ÎÊı
-    position_weight_ = 0.4;             // Î»ÖÃÈ¨ÖØ
-    velocity_weight_ = 0.2;             // ËÙ¶ÈÈ¨ÖØ
-    class_weight_ = 0.2;                // Àà±ğÈ¨ÖØ
-    feature_weight_ = 0.2;              // ÌØÕ÷È¨ÖØ
-    max_position_distance_ = 10.0;      // ×î´óÎ»ÖÃ¾àÀëãĞÖµ(Ã×)
-    max_velocity_diff_ = 5.0;           // ×î´óËÙ¶È²îãĞÖµ(Ã×/Ãë)
-    min_similarity_threshold_ = 0.5;    // ×îĞ¡ÏàËÆ¶ÈãĞÖµ
 }
 
 MultiTargetAssociator::~MultiTargetAssociator() {}
 
-// ¹ØÁªĞÂ¼ì²â½á¹ûÓëÒÑÓĞÄ¿±ê
+// å…³è”æ–°æ£€æµ‹ç»“æœä¸å·²æœ‰ç›®æ ‡
 std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vector<Detection>& new_detections, const std::vector<FusedObject>& existing_targets, Timestamp current_time) {
 
     std::vector<FusedObject> updated_targets = existing_targets;
 
-    // Èç¹ûÃ»ÓĞĞÂ¼ì²â½á¹û£¬Ö±½Ó·µ»ØÏÖÓĞÄ¿±ê
+    // å¦‚æœæ²¡æœ‰æ–°æ£€æµ‹ç»“æœï¼Œç›´æ¥è¿”å›ç°æœ‰ç›®æ ‡
     if (new_detections.empty()) {
         return updated_targets;
     }
 
-    // Èç¹ûÃ»ÓĞÏÖÓĞÄ¿±ê£¬½«ËùÓĞĞÂ¼ì²â½á¹û×÷ÎªĞÂÄ¿±ê
+    // å¦‚æœæ²¡æœ‰ç°æœ‰ç›®æ ‡ï¼Œå°†æ‰€æœ‰æ–°æ£€æµ‹ç»“æœä½œä¸ºæ–°ç›®æ ‡
     if (existing_targets.empty()) {
         for (const Detection& det : new_detections) {
             FusedObject new_object;
@@ -48,20 +40,20 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
         return updated_targets;
     }
 
-    // 1. Ô¤²âÏÖÓĞÄ¿±êµ½µ±Ç°Ê±¼äµÄ×´Ì¬
+    // 1. é¢„æµ‹ç°æœ‰ç›®æ ‡åˆ°å½“å‰æ—¶é—´çš„çŠ¶æ€
     std::vector<FusedObject> predicted_targets;
     for (const auto& target : existing_targets) {
         predicted_targets.push_back(motion_model_.predict(target, target.timestamp, current_time));
     }
 
-    // 2. ¹¹½¨³É±¾¾ØÕó£¨³É±¾ = 1 - ÏàËÆ¶È£©
+    // 2. æ„å»ºæˆæœ¬çŸ©é˜µï¼ˆæˆæœ¬ = 1 - ç›¸ä¼¼åº¦ï¼‰
     std::vector<std::vector<double>> cost_matrix(
         predicted_targets.size(),
-        std::vector<double>(new_detections.size(), 1.0)  // ³õÊ¼³É±¾ÉèÎª×î´óÖµ
+        std::vector<double>(new_detections.size(), 1.0)  // åˆå§‹æˆæœ¬è®¾ä¸ºæœ€å¤§å€¼
     );
 
     for (size_t i = 0; i < predicted_targets.size(); ++i) {
-        // ´´½¨Ò»¸öĞéÄâ¼ì²âÓÃÓÚÏàËÆ¶È¼ÆËã
+        // åˆ›å»ºä¸€ä¸ªè™šæ‹Ÿæ£€æµ‹ç”¨äºç›¸ä¼¼åº¦è®¡ç®—
         Detection predicted_det;
         predicted_det.position_global = predicted_targets[i].position;
         predicted_det.velocity_global = predicted_targets[i].velocity;
@@ -77,26 +69,26 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
 
         for (size_t j = 0; j < new_detections.size(); ++j) {
             double similarity = calculateSimilarity(predicted_det, new_detections[j]);
-            cost_matrix[i][j] = 1.0 - similarity;  // ×ª»»Îª³É±¾
+            cost_matrix[i][j] = 1.0 - similarity;  // è½¬æ¢ä¸ºæˆæœ¬
         }
     }
 
-    // 3. Ê¹ÓÃĞÙÑÀÀûËã·¨ÕÒµ½×îÓÅ¹ØÁª
+    // 3. ä½¿ç”¨åŒˆç‰™åˆ©ç®—æ³•æ‰¾åˆ°æœ€ä¼˜å…³è”
     std::vector<std::pair<int, int>> associations = hungarianAlgorithm(cost_matrix);
 
-    // 4. ±ê¼ÇÒÑ¹ØÁªµÄ¼ì²âºÍÄ¿±ê
+    // 4. æ ‡è®°å·²å…³è”çš„æ£€æµ‹å’Œç›®æ ‡
     std::vector<bool> detection_used(new_detections.size(), false);
     std::vector<bool> target_used(predicted_targets.size(), false);
 
     for (const auto& [target_idx, det_idx] : associations) {
-        if (cost_matrix[target_idx][det_idx] < (1.0 - min_similarity_threshold_) && target_used[target_idx] == false) {
-            // ¸üĞÂÄ¿±ê×´Ì¬
+        if (cost_matrix[target_idx][det_idx] < (1.0 - Config::GetInstance().getMinSimilarityThreshold()) && target_used[target_idx] == false) {
+            // æ›´æ–°ç›®æ ‡çŠ¶æ€
             FusedObject updated = motion_model_.update(
                 predicted_targets[target_idx],
                 new_detections[det_idx]
             );
 
-            // ¸üĞÂÆäËûÊôĞÔ
+            // æ›´æ–°å…¶ä»–å±æ€§
             updated.global_id = existing_targets[target_idx].global_id;
             updated.track_length = existing_targets[target_idx].track_length + 1;
             updated.is_new = false;
@@ -109,7 +101,7 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
         }
     }
 
-    // 5. ´¦ÀíÎ´¹ØÁªµÄ¼ì²â½á¹û£¨ĞÂÄ¿±ê£©
+    // 5. å¤„ç†æœªå…³è”çš„æ£€æµ‹ç»“æœï¼ˆæ–°ç›®æ ‡ï¼‰
     for (size_t j = 0; j < new_detections.size(); ++j) {
         if (!detection_used[j]) {
             FusedObject new_object;
@@ -132,41 +124,90 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
     return updated_targets;
 }
 
-// ¼ÆËãÁ½¸ö¼ì²â½á¹ûµÄÏàËÆ¶È
+std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vector<Detection>& detections, Timestamp current_time) {
+	std::vector<FusedObject> fused_objects;
+    for(const Detection& det : detections) {
+        if (det.detection_confidence < Config::GetInstance().getConfThreshold()) {
+			continue; // è·³è¿‡ä½ç½®ä¿¡åº¦æ£€æµ‹
+        }
+
+		int best_match_idx = -1;
+        double max_similarity = std::numeric_limits<double>::min();
+        auto toString = [](const Eigen::Vector3d& v) -> std::string {
+            return "(" + std::to_string(v.x()) + ", " + std::to_string(v.y()) + ", " + std::to_string(v.z()) + ")";
+        };
+		// æ‰¾åˆ°ä¸å½“å‰æ£€æµ‹ç»“æœæœ€ç›¸ä¼¼çš„èåˆç›®æ ‡
+        for (int i = 0; i < fused_objects.size(); ++i) {
+            double pos_sim = gaussianSimilarity(
+                (det.position_global - fused_objects[i].position).norm(),
+                Config::GetInstance().getMaxPositionDistance()
+			);
+            double vel_sim = cosineSimilarity(det.velocity_global, fused_objects[i].velocity);
+            double similarity = Config::GetInstance().getPositionWeight() * pos_sim
+				                + Config::GetInstance().getVelocityWeight() * vel_sim;
+            if (similarity > max_similarity && similarity > Config::GetInstance().getMinSimilarityThreshold()) {
+                max_similarity = similarity;
+				best_match_idx = i;
+            }
+        }
+
+        if (best_match_idx == -1) {
+            FusedObject new_object;
+            new_object.global_id = next_global_id_++;
+            new_object.timestamp = current_time;
+            // è¿™é‡Œçš„ä½ç½®å’Œé€Ÿåº¦åªæ˜¯éœ€è¦å’Œåé¢çš„ç›®æ ‡è¿›è¡Œç›®æ ‡åŒ¹é…ï¼Œåç»­è¿˜ä¼šè¿›è¡Œèåˆ
+            new_object.position = det.position_global;
+            new_object.velocity = det.velocity_global;
+            new_object.associated_detections.push_back(det);
+            new_object.is_new = true;
+            fused_objects.push_back(new_object);
+            std::cout << "æ–°ç›®æ ‡ï¼šnew_object.position = " << toString(det.position_global) << ", new_object.velocity = " << toString(det.velocity_global) << std::endl;
+        } else {
+            std::cout << "ç›®æ ‡åŒ¹é…æˆåŠŸï¼šDet.position_global = " << toString(det.position_global) << ", Det.velocity_global = " << toString(det.velocity_global)
+                << ", fused_objects[best_match_idx].position = " << toString(fused_objects[best_match_idx].position) << ", fused_objects[best_match_idx].velocity = " << toString(fused_objects[best_match_idx].velocity)
+                << std::endl;
+			fused_objects[best_match_idx].associated_detections.push_back(det);
+        }
+	}
+
+    return fused_objects;
+}
+
+// è®¡ç®—ä¸¤ä¸ªæ£€æµ‹ç»“æœçš„ç›¸ä¼¼åº¦
 double MultiTargetAssociator::calculateSimilarity(const Detection& a, const Detection& b) {
-    // 1. Î»ÖÃÏàËÆ¶È (Ê¹ÓÃ¸ßË¹ºË)
+    // 1. ä½ç½®ç›¸ä¼¼åº¦ (ä½¿ç”¨é«˜æ–¯æ ¸)
     double pos_dist = (a.position_global - b.position_global).norm();
-    double pos_sim = exp(-0.5 * pow(pos_dist / max_position_distance_, 2));
+    double pos_sim = gaussianSimilarity(pos_dist, Config::GetInstance().getMaxPositionDistance());
 
-    // 2. ËÙ¶ÈÏàËÆ¶È
+    // 2. é€Ÿåº¦ç›¸ä¼¼åº¦
     double vel_diff = (a.velocity_global - b.velocity_global).norm();
-    double vel_sim = exp(-0.5 * pow(vel_diff / max_velocity_diff_, 2));
+    double vel_sim = gaussianSimilarity(vel_diff, Config::GetInstance().getMaxVelocityDiff());
 
-    // 3. Àà±ğÏàËÆ¶È
+    // 3. ç±»åˆ«ç›¸ä¼¼åº¦
     double class_sim = (a.detected_class == b.detected_class) ? 1.0 : 0.0;
-    // ¿¼ÂÇÀà±ğÖÃĞÅ¶È
+    // è€ƒè™‘ç±»åˆ«ç½®ä¿¡åº¦
     class_sim *= (a.class_confidence + b.class_confidence) * 0.5;
 
-    // 4. ÌØÕ÷ÏàËÆ¶È (Ê¹ÓÃÓàÏÒÏàËÆ¶È)
+    // 4. ç‰¹å¾ç›¸ä¼¼åº¦ (ä½¿ç”¨ä½™å¼¦ç›¸ä¼¼åº¦)
     double feat_sim = calculateFeatureSimilarity(a.features, b.features);
 
-    // ¼ÓÈ¨ÈÚºÏÏàËÆ¶È
-    double similarity = position_weight_ * pos_sim 
-                        + velocity_weight_ * vel_sim 
-                        + class_weight_ * class_sim 
-                        + feature_weight_ * feat_sim;
+    // åŠ æƒèåˆç›¸ä¼¼åº¦
+    double similarity = Config::GetInstance().getPositionWeight() * pos_sim
+                        + Config::GetInstance().getVelocityWeight() * vel_sim
+                        + Config::GetInstance().getClassWeight() * class_sim
+                        + Config::GetInstance().getFeatureWeight() * feat_sim;
 
     return similarity;
 }
 
-// ¼ÆËãÌØÕ÷ÏòÁ¿µÄÏàËÆ¶È
+// è®¡ç®—ç‰¹å¾å‘é‡çš„ç›¸ä¼¼åº¦
 double MultiTargetAssociator::calculateFeatureSimilarity(const FeatureVector& a, const FeatureVector& b) {
-    // Èç¹ûÁ½¸öÌØÕ÷ÏòÁ¿¶¼Îª¿Õ£¬ÏàËÆ¶ÈÎª1.0
+    // å¦‚æœä¸¤ä¸ªç‰¹å¾å‘é‡éƒ½ä¸ºç©ºï¼Œç›¸ä¼¼åº¦ä¸º1.0
     if (a.isEmpty() && b.isEmpty()) {
         return 1.0;
     }
 
-    // Èç¹ûÒ»¸öÎª¿Õ£¬Ò»¸ö²»Îª¿Õ£¬ÏàËÆ¶ÈÎª0.0
+    // å¦‚æœä¸€ä¸ªä¸ºç©ºï¼Œä¸€ä¸ªä¸ä¸ºç©ºï¼Œç›¸ä¼¼åº¦ä¸º0.0
     if (a.isEmpty() || b.isEmpty()) {
         return 0.0;
     }
@@ -174,41 +215,59 @@ double MultiTargetAssociator::calculateFeatureSimilarity(const FeatureVector& a,
     double total_sim = 0.0;
     int feature_count = 0;
 
-    // ÊÓ¾õÌØÕ÷ÏàËÆ¶È
+    // è§†è§‰ç‰¹å¾ç›¸ä¼¼åº¦
     if (!a.visual_features.empty() && !b.visual_features.empty()) {
         total_sim += cosineSimilarity(a.visual_features, b.visual_features);
         feature_count++;
     }
 
-    // À×´ïÌØÕ÷ÏàËÆ¶È
+    // é›·è¾¾ç‰¹å¾ç›¸ä¼¼åº¦
     if (!a.radar_features.empty() && !b.radar_features.empty()) {
         total_sim += cosineSimilarity(a.radar_features, b.radar_features);
         feature_count++;
     }
 
-    // ÒôÆµÌØÕ÷ÏàËÆ¶È
+    // éŸ³é¢‘ç‰¹å¾ç›¸ä¼¼åº¦
     if (!a.audio_features.empty() && !b.audio_features.empty()) {
         total_sim += cosineSimilarity(a.audio_features, b.audio_features);
         feature_count++;
     }
 
-    // ĞÎ×´ÌØÕ÷ÏàËÆ¶È
+    // å½¢çŠ¶ç‰¹å¾ç›¸ä¼¼åº¦
     if (!a.shape_features.empty() && !b.shape_features.empty()) {
         total_sim += cosineSimilarity(a.shape_features, b.shape_features);
         feature_count++;
     }
 
-    // ÔË¶¯ÌØÕ÷ÏàËÆ¶È
+    // è¿åŠ¨ç‰¹å¾ç›¸ä¼¼åº¦
     if (!a.motion_features.empty() && !b.motion_features.empty()) {
         total_sim += cosineSimilarity(a.motion_features, b.motion_features);
         feature_count++;
     }
 
-    // ¼ÆËãÆ½¾ùÏàËÆ¶È
+    // è®¡ç®—å¹³å‡ç›¸ä¼¼åº¦
     return feature_count > 0 ? total_sim / feature_count : 0.0;
 }
 
-// ¼ÆËãÁ½¸öÏòÁ¿µÄÓàÏÒÏàËÆ¶È
+// è®¡ç®—3ç»´é€Ÿåº¦å‘é‡çš„ä½™å¼¦ç›¸ä¼¼åº¦
+double MultiTargetAssociator::cosineSimilarity(const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
+    // è®¡ç®—å‘é‡ç‚¹ç§¯ï¼ˆ3ä¸ªç»´åº¦åˆ†åˆ«ç›¸ä¹˜åæ±‚å’Œï¼‰
+    double dot_product = a.dot(b);  // ç­‰ä»·äº a.x()*b.x() + a.y()*b.y() + a.z()*b.z()
+
+    // è®¡ç®—å‘é‡æ¨¡é•¿çš„å¹³æ–¹ï¼ˆå„ç»´åº¦å¹³æ–¹å’Œï¼‰
+    double norm_a_squared = a.squaredNorm();  // ç­‰ä»·äº a.x()Â² + a.y()Â² + a.z()Â²
+    double norm_b_squared = b.squaredNorm();
+
+    // é¿å…é™¤ä»¥é›¶ï¼ˆè‹¥ä»»ä¸€å‘é‡æ¨¡é•¿ä¸º0ï¼Œè¿”å›0è¡¨ç¤ºæ— ç›¸ä¼¼åº¦ï¼‰
+    if (norm_a_squared == 0.0 || norm_b_squared == 0.0) {
+        return 0.0;
+    }
+
+    // ä½™å¼¦ç›¸ä¼¼åº¦å…¬å¼ï¼šç‚¹ç§¯ / (æ¨¡é•¿ä¹˜ç§¯)
+    return dot_product / (sqrt(norm_a_squared) * sqrt(norm_b_squared));
+}
+
+// è®¡ç®—ä¸¤ä¸ªå‘é‡çš„ä½™å¼¦ç›¸ä¼¼åº¦
 double MultiTargetAssociator::cosineSimilarity(const std::vector<double>& a, const std::vector<double>& b) {
     if (a.empty() || b.empty() || a.size() != b.size()) {
         return 0.0;
@@ -231,7 +290,15 @@ double MultiTargetAssociator::cosineSimilarity(const std::vector<double>& a, con
     return dot_product / (sqrt(norm_a) * sqrt(norm_b));
 }
 
-// Ê¹ÓÃdlib¿âÊµÏÖĞÙÑÀÀûËã·¨£¨20.0°æ±¾£©
+double MultiTargetAssociator::gaussianSimilarity(const double& dis, const double& scale) {
+    if (scale <= 0) {
+        return 0.0;
+    }
+    double sim = exp(-0.5 * pow(dis / scale, 2));
+	return sim;
+}
+
+// ä½¿ç”¨dlibåº“å®ç°åŒˆç‰™åˆ©ç®—æ³•ï¼ˆ20.0ç‰ˆæœ¬ï¼‰
 std::vector<std::pair<int, int>> MultiTargetAssociator::hungarianAlgorithm(const std::vector<std::vector<double>>& cost_matrix) {
     std::vector<std::pair<int, int>> result;
 
@@ -239,37 +306,37 @@ std::vector<std::pair<int, int>> MultiTargetAssociator::hungarianAlgorithm(const
         return result;
     }
 
-    // »ñÈ¡¾ØÕó´óĞ¡
+    // è·å–çŸ©é˜µå¤§å°
     int rows = cost_matrix.size();
     int cols = cost_matrix[0].size();
 
-    // dlibµÄ×î´ó³É±¾·ÖÅäËã·¨ĞèÒª·½Õó£¬Èç¹û²»ÊÇ·½ÕóÔòÌî³ä
+    // dlibçš„æœ€å¤§æˆæœ¬åˆ†é…ç®—æ³•éœ€è¦æ–¹é˜µï¼Œå¦‚æœä¸æ˜¯æ–¹é˜µåˆ™å¡«å……
     int n = std::max(rows, cols);
 
-    // ´´½¨³É±¾¾ØÕó£¨dlibÊ¹ÓÃ×î´ó»¯ÎÊÌâ£¬ËùÒÔÕâÀïÓÃÒ»¸ö´óÖµ¼õÈ¥³É±¾£©
+    // åˆ›å»ºæˆæœ¬çŸ©é˜µï¼ˆdlibä½¿ç”¨æœ€å¤§åŒ–é—®é¢˜ï¼Œæ‰€ä»¥è¿™é‡Œç”¨ä¸€ä¸ªå¤§å€¼å‡å»æˆæœ¬ï¼‰
     dlib::matrix<int> assignment_matrix(n, n);
-    const int MAX_COST = 1000000;  // ×ã¹»´óµÄ³£Êı
+    const int MAX_COST = 1000000;  // è¶³å¤Ÿå¤§çš„å¸¸æ•°
 
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
             if (i < rows && j < cols) {
-                // ×ª»»ÎªÕûÊı²¢·´×ª³É±¾£¨ÒòÎªdlibÊµÏÖµÄÊÇ×î´ó³É±¾·ÖÅä£©
+                // è½¬æ¢ä¸ºæ•´æ•°å¹¶åè½¬æˆæœ¬ï¼ˆå› ä¸ºdlibå®ç°çš„æ˜¯æœ€å¤§æˆæœ¬åˆ†é…ï¼‰
                 assignment_matrix(i, j) = static_cast<int>(MAX_COST - cost_matrix[i][j] * MAX_COST);
             } else {
-                // Ìî³äµÄÎ»ÖÃ³É±¾ÉèÎª0
+                // å¡«å……çš„ä½ç½®æˆæœ¬è®¾ä¸º0
                 assignment_matrix(i, j) = 0;
             }
         }
     }
 
-    // Ö´ĞĞ×î´ó³É±¾·ÖÅäËã·¨
+    // æ‰§è¡Œæœ€å¤§æˆæœ¬åˆ†é…ç®—æ³•
     std::vector<long> assignment = max_cost_assignment(assignment_matrix);
 
-    // ´¦Àí½á¹û£¬Ö»±£ÁôÓĞĞ§Æ¥Åä
+    // å¤„ç†ç»“æœï¼Œåªä¿ç•™æœ‰æ•ˆåŒ¹é…
     for (int i = 0; i < rows; ++i) {
-        if (assignment[i] < cols) {  // Ö»¿¼ÂÇÔÚÓĞĞ§·¶Î§ÄÚµÄÆ¥Åä
-            // ¼ì²éÆ¥ÅäÊÇ·ñÓĞĞ§£¨³É±¾µÍÓÚãĞÖµ£©
-            if (cost_matrix[i][assignment[i]] < (1.0 - min_similarity_threshold_)) {
+        if (assignment[i] < cols) {  // åªè€ƒè™‘åœ¨æœ‰æ•ˆèŒƒå›´å†…çš„åŒ¹é…
+            // æ£€æŸ¥åŒ¹é…æ˜¯å¦æœ‰æ•ˆï¼ˆæˆæœ¬ä½äºé˜ˆå€¼ï¼‰
+            if (cost_matrix[i][assignment[i]] < (1.0 - Config::GetInstance().getMinSimilarityThreshold())) {
                 result.emplace_back(i, assignment[i]);
             }
         }

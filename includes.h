@@ -22,3 +22,10 @@ using Timestamp = std::chrono::system_clock::time_point;
 
 template<typename T>
 using TRTUniquePtr = std::unique_ptr<T>;
+
+#define PROPERTY(Type, Name, Func) \
+private: \
+    Type m_##Name; \
+public: \
+    const Type& get##Func() { return m_##Name; } \
+    void set##Func(const Type& value) { m_##Name = value; }

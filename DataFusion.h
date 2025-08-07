@@ -9,7 +9,7 @@ public:
     FeatureVector fuseFeatures(const std::vector<Detection>& detections);
 
     // 决策级融合：融合多个检测结果的类别判断（基于D-S证据理论）
-    std::map<ObjectClass, double> fuseDecisions(const std::vector<Detection>& detections, bool& has_category_conflict);
+    std::map<ObjectClass, double> fuseDecisions(const std::vector<Detection>& detections, double conf_threshold, bool& has_category_conflict);
 
     // 位置融合：融合多个检测结果的位置信息
     Eigen::Vector3d fusePositions(const std::vector<Detection>& detections, Eigen::Matrix3d& covariance);

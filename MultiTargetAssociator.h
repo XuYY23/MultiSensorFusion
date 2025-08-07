@@ -13,6 +13,8 @@ public:
                                               const std::vector<FusedObject>& existing_targets,
                                               Timestamp current_time);
 
+    std::vector<FusedObject> associateTargets(const std::vector<Detection>& detections, Timestamp current_time);
+
     // 计算两个检测结果的相似度
     double calculateSimilarity(const Detection& a, const Detection& b);
 
@@ -20,7 +22,11 @@ public:
     double calculateFeatureSimilarity(const FeatureVector& a, const FeatureVector& b);
 
     // 计算两个向量的余弦相似度
+    double cosineSimilarity(const Eigen::Vector3d& a, const Eigen::Vector3d& b);
     double cosineSimilarity(const std::vector<double>& a, const std::vector<double>& b);
+
+	// 计算高斯相似度（基于位置和速度的马氏距离）
+    double gaussianSimilarity(const double& dis, const double& scale);
 
 private:
     // 使用dlib库实现的匈牙利算法
@@ -28,13 +34,4 @@ private:
 
     int next_global_id_;  // 下一个全局目标ID
     ConstantVelocityModel motion_model_;  // 运动模型
-
-    // 关联参数
-    double position_weight_;          // 位置权重
-    double velocity_weight_;          // 速度权重
-    double class_weight_;             // 类别权重
-    double feature_weight_;           // 特征权重
-    double max_position_distance_;    // 最大位置距离阈值(米)
-    double max_velocity_diff_;        // 最大速度差阈值(米/秒)
-    double min_similarity_threshold_; // 最小相似度阈值
 };

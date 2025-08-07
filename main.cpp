@@ -1,4 +1,5 @@
 #include "MultimodalDetectorSystem.h"
+#include "Config.h"
 #include <iostream>
 #include <random>
 
@@ -87,6 +88,28 @@ std::vector<Detection> generateRandomDetections() {
     for (const auto& [sensor_id, sensor_type] : sensors) {
         int num_detections = 1 + gen() % 3;  // 每个传感器1-3个检测结果
 
+        int is_same = gen() % 2;
+
+        if (is_same && detections.size() > 0) {
+			std::cout << "生成与已有检测结果相似的检测，测试融合效果" << std::endl;
+            Detection base = detections.back();
+            for (int i = 0; i < num_detections; ++i) {
+                Detection det = base;
+                det.sensor_id = sensor_id;
+                det.sensor_type = sensor_type;
+                auto base_time = std::chrono::system_clock::now();
+                det.timestamp = base_time + std::chrono::microseconds(time_jitter(gen));
+                det.local_id = id_dist(gen);
+                det.detected_class = static_cast<ObjectClass>(class_dist(gen));
+                det.class_confidence = conf_dist(gen);
+                det.detection_confidence = conf_dist(gen);
+                // 生成特征向量
+                det.features = generateRandomFeatures(sensor_type);
+                detections.push_back(det);
+            }
+            continue;
+        }
+
         for (int i = 0; i < num_detections; ++i) {
             Detection det;
             det.sensor_id = sensor_id;
@@ -129,6 +152,15 @@ std::vector<Detection> generateRandomDetections() {
 
 int main() {
     std::cout << "多模态多传感器目标检测融合系统示例" << std::endl;
+
+    Config::GetInstance().setPositionWeight(0.4);
+    Config::GetInstance().setVelocityWeight(0.2);
+    Config::GetInstance().setClassWeight(0.2);
+    Config::GetInstance().setFeatureWeight(0.2);
+    Config::GetInstance().setMaxPositionDistance(10.0);
+    Config::GetInstance().setMaxVelocityDiff(5.0);
+    Config::GetInstance().setMinSimilarityThreshold(0.5);
+    Config::GetInstance().setConfThreshold(0.5);
 
     // 1. 配置传感器校准参数
     std::map<std::string, SensorCalibration> calibrations;
@@ -213,8 +245,7 @@ int main() {
         std::string filename = "fusion_results_frame_" + std::to_string(frame) + ".json";
         if (system.saveResults(filename)) {
             std::cout << "结果已保存到 " << filename << std::endl;
-        }
-        else {
+        } else {
             std::cout << "保存结果失败" << std::endl;
         }
 

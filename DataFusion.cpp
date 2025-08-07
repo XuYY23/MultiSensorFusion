@@ -88,7 +88,7 @@ FeatureVector DataFusion::fuseFeatures(const std::vector<Detection>& detections)
 }
 
 // 决策级融合：融合多个检测结果的类别判断（基于D-S证据理论）
-std::map<ObjectClass, double> DataFusion::fuseDecisions(const std::vector<Detection>& detections, bool& has_category_conflict) {
+std::map<ObjectClass, double> DataFusion::fuseDecisions(const std::vector<Detection>& detections, double conf_threshold, bool& has_category_conflict) {
     std::map<ObjectClass, double> fused;
     if (detections.empty()) {
         return fused;
@@ -98,8 +98,10 @@ std::map<ObjectClass, double> DataFusion::fuseDecisions(const std::vector<Detect
     std::vector<std::map<ObjectClass, double>> bpas;
 	std::set<ObjectClass> clases;
     for (const auto& det : detections) {
+        if (det.detection_confidence < conf_threshold) {
+            continue;  // 如果置信度低于阈值，跳过该检测
+        }
         std::map<ObjectClass, double> bpa;
-
         // 对于检测到的类别，分配与置信度相关的概率
         double confidence = det.class_confidence;
         bpa[det.detected_class] = confidence * 0.9;  // 90%分配给检测类别
@@ -110,8 +112,8 @@ std::map<ObjectClass, double> DataFusion::fuseDecisions(const std::vector<Detect
         bpas.push_back(bpa);
     }
 
-    if(clases.size() > 1) {
-        has_category_conflict = true;  // 存在多个类别，标记为冲突
+    if(clases.size() > 1 || clases.size() == 0) {
+        has_category_conflict = true;  // 存在多个类别或没有可信的检测结果，标记为冲突
 		return std::map<ObjectClass, double>();
     } else {
         has_category_conflict = false; // 只有一个类别，没有冲突
@@ -127,7 +129,7 @@ std::map<ObjectClass, double> DataFusion::fuseDecisions(const std::vector<Detect
     for (size_t i = 1; i < bpas.size(); ++i) {
         std::map<ObjectClass, double> temp;
         double conflict = 0.0;
-
+        
         // 计算所有可能的交集
         for (const auto& [a, mass_a] : combined) {
             for (const auto& [b, mass_b] : bpas[i]) {

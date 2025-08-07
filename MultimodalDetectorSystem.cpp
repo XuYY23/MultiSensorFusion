@@ -1,4 +1,5 @@
 #include "MultimodalDetectorSystem.h"
+#include "Config.h"
 
 MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, SensorCalibration>& calibrations) : 
     aligner_(calibrations), 
@@ -39,13 +40,13 @@ void MultimodalDetectorSystem::processDetections() {
     std::vector<Detection> synchronized_detections = aligner_.synchronizeDetections(current_detections_, target_time);
 
     // 2. 多目标关联
-    fused_objects_ = associator_.associateTargets(synchronized_detections, fused_objects_, target_time);
+    fused_objects_ = associator_.associateTargets(synchronized_detections, target_time);
 
     // 3. 对每个目标进行特征和决策融合
     for (auto& obj : fused_objects_) {
         if (!obj.associated_detections.empty()) {
             // 决策级融合
-            obj.class_probabilities = fusion_.fuseDecisions(obj.associated_detections, obj.has_category_conflict);
+            obj.class_probabilities = fusion_.fuseDecisions(obj.associated_detections, Config::GetInstance().getConfThreshold(), obj.has_category_conflict);
 
             if (obj.has_category_conflict == true) {
                 // 这里应该重新检测
@@ -56,13 +57,14 @@ void MultimodalDetectorSystem::processDetections() {
             obj.fused_features = fusion_.fuseFeatures(obj.associated_detections);
 
             // 如果是新目标，需要融合位置和速度
-            if (obj.is_new) {
+            //if (obj.is_new) {
+                // 直接融合位置和速度，因为目标关联不再是目标跟踪，永远是新目标
                 Eigen::Matrix3d pos_cov, vel_cov;
                 obj.position = fusion_.fusePositions(obj.associated_detections, pos_cov);
                 obj.velocity = fusion_.fuseVelocities(obj.associated_detections, vel_cov);
                 obj.position_covariance = pos_cov;
                 obj.velocity_covariance = vel_cov;
-            }
+            //}
         }
     }
 
