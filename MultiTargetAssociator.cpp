@@ -1,6 +1,7 @@
 ﻿#include "MultiTargetAssociator.h"
-#include "FeatureExtractor.h"
 #include "Config.h"
+#include "MathUtils.h"
+#include "ReuseFunction.h"
 
 MultiTargetAssociator::MultiTargetAssociator() {
     // 初始化目标ID计数器
@@ -68,13 +69,13 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
         predicted_det.features = predicted_targets[i].fused_features;
 
         for (size_t j = 0; j < new_detections.size(); ++j) {
-            double similarity = calculateSimilarity(predicted_det, new_detections[j]);
+            double similarity = ReuseFunction::GetInstance().calculateSimilarity(predicted_det, new_detections[j]);
             cost_matrix[i][j] = 1.0 - similarity;  // 转换为成本
         }
     }
 
     // 3. 使用匈牙利算法找到最优关联
-    std::vector<std::pair<int, int>> associations = hungarianAlgorithm(cost_matrix);
+    std::vector<std::pair<int, int>> associations = ReuseFunction::GetInstance().hungarianAlgorithm(cost_matrix);
 
     // 4. 标记已关联的检测和目标
     std::vector<bool> detection_used(new_detections.size(), false);
@@ -138,11 +139,11 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
         };
 		// 找到与当前检测结果最相似的融合目标
         for (int i = 0; i < fused_objects.size(); ++i) {
-            double pos_sim = gaussianSimilarity(
+            double pos_sim = MathUtils::GetInstance().gaussianSimilarity(
                 (det.position_global - fused_objects[i].position).norm(),
                 Config::GetInstance().getMaxPositionDistance()
 			);
-            double vel_sim = cosineSimilarity(det.velocity_global, fused_objects[i].velocity);
+            double vel_sim = MathUtils::GetInstance().cosineSimilarity(det.velocity_global, fused_objects[i].velocity);
             double similarity = Config::GetInstance().getPositionWeight() * pos_sim
 				                + Config::GetInstance().getVelocityWeight() * vel_sim;
             if (similarity > max_similarity && similarity > Config::GetInstance().getMinSimilarityThreshold()) {
@@ -171,176 +172,4 @@ std::vector<FusedObject> MultiTargetAssociator::associateTargets(const std::vect
 	}
 
     return fused_objects;
-}
-
-// 计算两个检测结果的相似度
-double MultiTargetAssociator::calculateSimilarity(const Detection& a, const Detection& b) {
-    // 1. 位置相似度 (使用高斯核)
-    double pos_dist = (a.position_global - b.position_global).norm();
-    double pos_sim = gaussianSimilarity(pos_dist, Config::GetInstance().getMaxPositionDistance());
-
-    // 2. 速度相似度
-    double vel_diff = (a.velocity_global - b.velocity_global).norm();
-    double vel_sim = gaussianSimilarity(vel_diff, Config::GetInstance().getMaxVelocityDiff());
-
-    // 3. 类别相似度
-    double class_sim = (a.detected_class == b.detected_class) ? 1.0 : 0.0;
-    // 考虑类别置信度
-    class_sim *= (a.class_confidence + b.class_confidence) * 0.5;
-
-    // 4. 特征相似度 (使用余弦相似度)
-    double feat_sim = calculateFeatureSimilarity(a.features, b.features);
-
-    // 加权融合相似度
-    double similarity = Config::GetInstance().getPositionWeight() * pos_sim
-                        + Config::GetInstance().getVelocityWeight() * vel_sim
-                        + Config::GetInstance().getClassWeight() * class_sim
-                        + Config::GetInstance().getFeatureWeight() * feat_sim;
-
-    return similarity;
-}
-
-// 计算特征向量的相似度
-double MultiTargetAssociator::calculateFeatureSimilarity(const FeatureVector& a, const FeatureVector& b) {
-    // 如果两个特征向量都为空，相似度为1.0
-    if (a.isEmpty() && b.isEmpty()) {
-        return 1.0;
-    }
-
-    // 如果一个为空，一个不为空，相似度为0.0
-    if (a.isEmpty() || b.isEmpty()) {
-        return 0.0;
-    }
-
-    double total_sim = 0.0;
-    int feature_count = 0;
-
-    // 视觉特征相似度
-    if (!a.visual_features.empty() && !b.visual_features.empty()) {
-        total_sim += cosineSimilarity(a.visual_features, b.visual_features);
-        feature_count++;
-    }
-
-    // 雷达特征相似度
-    if (!a.radar_features.empty() && !b.radar_features.empty()) {
-        total_sim += cosineSimilarity(a.radar_features, b.radar_features);
-        feature_count++;
-    }
-
-    // 音频特征相似度
-    if (!a.audio_features.empty() && !b.audio_features.empty()) {
-        total_sim += cosineSimilarity(a.audio_features, b.audio_features);
-        feature_count++;
-    }
-
-    // 形状特征相似度
-    if (!a.shape_features.empty() && !b.shape_features.empty()) {
-        total_sim += cosineSimilarity(a.shape_features, b.shape_features);
-        feature_count++;
-    }
-
-    // 运动特征相似度
-    if (!a.motion_features.empty() && !b.motion_features.empty()) {
-        total_sim += cosineSimilarity(a.motion_features, b.motion_features);
-        feature_count++;
-    }
-
-    // 计算平均相似度
-    return feature_count > 0 ? total_sim / feature_count : 0.0;
-}
-
-// 计算3维速度向量的余弦相似度
-double MultiTargetAssociator::cosineSimilarity(const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
-    // 计算向量点积（3个维度分别相乘后求和）
-    double dot_product = a.dot(b);  // 等价于 a.x()*b.x() + a.y()*b.y() + a.z()*b.z()
-
-    // 计算向量模长的平方（各维度平方和）
-    double norm_a_squared = a.squaredNorm();  // 等价于 a.x()² + a.y()² + a.z()²
-    double norm_b_squared = b.squaredNorm();
-
-    // 避免除以零（若任一向量模长为0，返回0表示无相似度）
-    if (norm_a_squared == 0.0 || norm_b_squared == 0.0) {
-        return 0.0;
-    }
-
-    // 余弦相似度公式：点积 / (模长乘积)
-    return dot_product / (sqrt(norm_a_squared) * sqrt(norm_b_squared));
-}
-
-// 计算两个向量的余弦相似度
-double MultiTargetAssociator::cosineSimilarity(const std::vector<double>& a, const std::vector<double>& b) {
-    if (a.empty() || b.empty() || a.size() != b.size()) {
-        return 0.0;
-    }
-
-    double dot_product = 0.0;
-    double norm_a = 0.0;
-    double norm_b = 0.0;
-
-    for (size_t i = 0; i < a.size(); ++i) {
-        dot_product += a[i] * b[i];
-        norm_a += a[i] * a[i];
-        norm_b += b[i] * b[i];
-    }
-
-    if (norm_a == 0.0 || norm_b == 0.0) {
-        return 0.0;
-    }
-
-    return dot_product / (sqrt(norm_a) * sqrt(norm_b));
-}
-
-double MultiTargetAssociator::gaussianSimilarity(const double& dis, const double& scale) {
-    if (scale <= 0) {
-        return 0.0;
-    }
-    double sim = exp(-0.5 * pow(dis / scale, 2));
-	return sim;
-}
-
-// 使用dlib库实现匈牙利算法（20.0版本）
-std::vector<std::pair<int, int>> MultiTargetAssociator::hungarianAlgorithm(const std::vector<std::vector<double>>& cost_matrix) {
-    std::vector<std::pair<int, int>> result;
-
-    if (cost_matrix.empty() || cost_matrix[0].empty()) {
-        return result;
-    }
-
-    // 获取矩阵大小
-    int rows = cost_matrix.size();
-    int cols = cost_matrix[0].size();
-
-    // dlib的最大成本分配算法需要方阵，如果不是方阵则填充
-    int n = std::max(rows, cols);
-
-    // 创建成本矩阵（dlib使用最大化问题，所以这里用一个大值减去成本）
-    dlib::matrix<int> assignment_matrix(n, n);
-    const int MAX_COST = 1000000;  // 足够大的常数
-
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            if (i < rows && j < cols) {
-                // 转换为整数并反转成本（因为dlib实现的是最大成本分配）
-                assignment_matrix(i, j) = static_cast<int>(MAX_COST - cost_matrix[i][j] * MAX_COST);
-            } else {
-                // 填充的位置成本设为0
-                assignment_matrix(i, j) = 0;
-            }
-        }
-    }
-
-    // 执行最大成本分配算法
-    std::vector<long> assignment = max_cost_assignment(assignment_matrix);
-
-    // 处理结果，只保留有效匹配
-    for (int i = 0; i < rows; ++i) {
-        if (assignment[i] < cols) {  // 只考虑在有效范围内的匹配
-            // 检查匹配是否有效（成本低于阈值）
-            if (cost_matrix[i][assignment[i]] < (1.0 - Config::GetInstance().getMinSimilarityThreshold())) {
-                result.emplace_back(i, assignment[i]);
-            }
-        }
-    }
-
-    return result;
 }

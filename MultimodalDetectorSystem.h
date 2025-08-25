@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SpatioTemporalAligner.h"
-#include "FeatureExtractor.h"
 #include "MultiTargetAssociator.h"
 #include "DataFusion.h"
 #include "JsonOutput.h"
@@ -25,6 +24,13 @@ public:
 
     // 设置时间同步的目标时间（如果不设置则使用最新检测时间）
     void setTargetTimestamp(Timestamp target_time);
+
+    // 聚类
+    void clustering();
+
+private:
+    // 双值判定是否有需要更新的目标
+    bool twoValueJudge();
 
 private:
     SpatioTemporalAligner aligner_;       // 时空对齐器

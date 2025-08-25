@@ -18,11 +18,86 @@ enum class ObjectClass {
     VEHICLE,
     BICYCLE,
     ANIMAL,
-    STATIC_OBSTACLE
+    STATIC_OBSTACLE,
+	POTENTIAL_NEW_TYPE  // 潜在新类别
 };
 
-// 将ObjectClass转换为字符串
-std::string objectClassToString(ObjectClass cls);
+class BaseObject {
+public:
+	virtual ~BaseObject() = default;
 
-// 从字符串转换为ObjectClass
-ObjectClass stringToObjectClass(const std::string& str);
+    // 将ObjectClass转换为字符串
+    virtual std::string toString() {
+        return "unknown";
+    }
+
+	// 用于比较两个ObjectClass是否相同
+	virtual bool operator==(const ObjectClass& other) const {
+        return other == ObjectClass::UNKNOWN;
+    }
+};
+
+class PersonObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "person";
+	}
+
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::PERSON;
+	}
+};
+
+class VehicleObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "vehicle";
+    }
+
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::VEHICLE;
+    }
+};
+
+class BicycleObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "bicycle";
+    }
+
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::BICYCLE;
+    }
+};
+
+class AnimalObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "animal";
+    }
+
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::ANIMAL;
+	}
+};
+
+class StaticObstacleObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "static_obstacle";
+    }
+
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::STATIC_OBSTACLE;
+	}
+};
+
+class PotentialNewTypeObject : public BaseObject {
+public:
+    std::string toString() override {
+        return "potential_new_type";
+    }
+    bool operator==(const ObjectClass& other) const override {
+        return other == ObjectClass::POTENTIAL_NEW_TYPE;
+	}
+};

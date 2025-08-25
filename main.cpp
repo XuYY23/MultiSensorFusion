@@ -161,6 +161,18 @@ int main() {
     Config::GetInstance().setMaxVelocityDiff(5.0);
     Config::GetInstance().setMinSimilarityThreshold(0.5);
     Config::GetInstance().setConfThreshold(0.5);
+    Config::GetInstance().setKlDivThreshold(0.1);
+    Config::GetInstance().setNewTargetCosineThresh(0.6);
+    Config::GetInstance().setNewSampleClusterThreshold(30);
+    Config::GetInstance().setDpcRhoMin(5.0);
+    Config::GetInstance().setDpcDeltaMin(0.3);
+    Config::GetInstance().setCutDistance(0.25);
+    Config::GetInstance().setIsolatedPointMin(0.75);
+    Config::GetInstance().setIncrementalGamma(0.5);
+    Config::GetInstance().setDistillLambda1(0.7);
+    Config::GetInstance().setDistillLambda2(0.3);
+    Config::GetInstance().setHistoricalAccThreshold(0.9);
+    Config::GetInstance().setNewClassAccThreshold(0.85);
 
     // 1. 配置传感器校准参数
     std::map<std::string, SensorCalibration> calibrations;

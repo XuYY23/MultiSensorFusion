@@ -152,3 +152,30 @@ struct ImageDetectionResult {
 	};
 	std::vector<Box> boxes;				// 存储检测结果的目标框
 };
+
+// 伪标签结构体
+struct PseudoLabel {
+    std::string label;															// 伪标签字符串（如“新目标-006-近似类别001-低速-固定方位”）
+    std::shared_ptr<BaseObject> new_class;										// 新类别
+	std::shared_ptr<BaseObject> associated_historical_class;					// 关联的历史类别
+    std::map<std::string, std::string> metadata;								// 关键元数据（速度、方位等）
+};
+
+// 聚类结果结构体
+struct ClusterResult {
+	std::shared_ptr<BaseObject> cluster_class;						// 簇类别
+    std::vector<FeatureVector> samples;								// 簇内样本特征
+    FeatureVector cluster_center;									// 簇中心特征
+    double avg_density;												// 簇内平均局部密度
+    PseudoLabel pseudo_label;										// 对应的伪标签
+};
+
+// 增量模型配置结构体
+struct IncrementalModelConfig {
+    std::string teacher_model_path;     // 教师模型路径
+    std::string student_model_path;     // 学生模型路径
+    float temperature = 5.0f;           // 知识蒸馏温度系数
+    float lambda1 = 0.7f;               // 输出层蒸馏损失权重
+    float lambda2 = 0.3f;               // 隐层蒸馏损失权重
+    float gamma = 0.5f;                 // 蒸馏损失在总损失中的权重
+};

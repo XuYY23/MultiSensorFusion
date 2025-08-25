@@ -1,5 +1,8 @@
 #include "MultimodalDetectorSystem.h"
 #include "Config.h"
+#include "FeatureDataBase.h"
+#include "ReuseFunction.h"
+#include "MathUtils.h"
 
 MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, SensorCalibration>& calibrations) : 
     aligner_(calibrations), 
@@ -94,6 +97,9 @@ void MultimodalDetectorSystem::processDetections() {
         }
     }
 
+    // 5、增量学习
+
+
     // 清空当前检测队列
     current_detections_.clear();
 }
@@ -112,4 +118,63 @@ bool MultimodalDetectorSystem::saveResults(const std::string& filename) {
 void MultimodalDetectorSystem::setTargetTimestamp(Timestamp target_time) {
     target_timestamp_ = target_time;
     use_custom_target_time_ = true;
+}
+
+void MultimodalDetectorSystem::clustering() {
+    bool need_clustering = twoValueJudge();
+    if (need_clustering) {
+        std::vector<ClusterResult> cluster_result = FeatureDataBase::GetInstance().performDPCClustering();
+        std::vector<std::map<std::string, std::string>> meta_datas;
+        ReuseFunction::GetInstance().generatePseudoLabels(cluster_result, FeatureDataBase::GetInstance().getHistoricalFeatures(), meta_datas);
+        FeatureDataBase::GetInstance().setNewCategories(cluster_result);
+    }
+}
+
+bool MultimodalDetectorSystem::twoValueJudge() {
+    std::vector<FeatureVector> fused_features;
+    for (const auto& obj : fused_objects_) {
+        if (!obj.fused_features.isEmpty()) {
+            fused_features.push_back(obj.fused_features);
+        }
+    }
+
+    const double kl_thresh = Config::GetInstance().getKlDivThreshold();
+    const double cos_thresh = Config::GetInstance().getNewTargetCosineThresh();
+    for (const FeatureVector& feat : fused_features) {
+        if (feat.isEmpty()) {
+            continue;
+        }
+        bool is_new = true; // 初始标记为新目标
+
+        // 与所有历史特征对比
+        for (const auto& [cls, hist_feats] : FeatureDataBase::GetInstance().getHistoricalFeatures()) {
+            for (const auto& hist_feat : hist_feats) {
+                if (hist_feat.isEmpty()) {
+                    continue;
+                }
+
+                // 余弦相似度
+                double cos_sim = ReuseFunction::GetInstance().calculateFeatureSimilarity(feat, hist_feat);
+                // KL散度
+                double kl_div = MathUtils::GetInstance().calculateKL(feat, hist_feat);
+
+                // 若满足任一条件，判定为已知目标
+                if (cos_sim >= cos_thresh || kl_div <= kl_thresh) {
+                    is_new = false;
+                    break;
+                }
+            }
+            if (!is_new) {
+                break;
+            }
+        }
+
+        if (is_new) {
+            FeatureDataBase::GetInstance().addNewFeature(feat);
+        }
+    }
+
+    // 判定是否需要聚类（新样本数>30）
+    int cluster_thresh = Config::GetInstance().getNewSampleClusterThreshold();
+    return (FeatureDataBase::GetInstance().getNewFeatures().size() > cluster_thresh);
 }

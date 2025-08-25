@@ -25,7 +25,19 @@ using TRTUniquePtr = std::unique_ptr<T>;
 
 #define PROPERTY(Type, Name, Func) \
 private: \
-    Type m_##Name; \
+    Type Name; \
 public: \
-    const Type& get##Func() { return m_##Name; } \
-    void set##Func(const Type& value) { m_##Name = value; }
+    const Type& get##Func() { return this->Name; } \
+    void set##Func(const Type& value) { this->Name = value; }
+
+// 需要提供void init()函数用于初始化
+#define INSTANCE(class_name) \
+private: \
+    class_name() { init(); }; \
+    class_name(const class_name&) = default; \
+    class_name& operator=(const class_name&) = default; \
+public: \
+    static class_name& GetInstance() { \
+        static class_name instance; \
+        return instance; \
+    }
