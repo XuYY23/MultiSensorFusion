@@ -86,6 +86,7 @@ struct Context {
 		stream(std::move(other.stream)),
 		event(std::move(other.event)),
 		hostOutput(other.hostOutput),
+		isHostOutputUseCudaMemcpy(false),
 		deviceInput(other.deviceInput),
 		deviceOutput(other.deviceOutput) {
 		other.hostOutput = nullptr;
@@ -113,6 +114,7 @@ struct Context {
 				cudaFree(deviceOutput);
 			}
 			hostOutput = other.hostOutput;
+			isHostOutputUseCudaMemcpy = other.isHostOutputUseCudaMemcpy;
 			deviceInput = other.deviceInput;
 			deviceOutput = other.deviceOutput;
 			other.hostOutput = nullptr;
