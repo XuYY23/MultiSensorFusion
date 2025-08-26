@@ -26,4 +26,7 @@ public:
 	void generatePseudoLabels(std::vector<ClusterResult>& clusters, 
 							  const std::map<std::shared_ptr<BaseObject>, std::vector<FeatureVector>>& historical_features,
 		                      const std::vector<std::map<std::string, std::string>>& meta_datas);
+
+	// 分析模型文件，返回模型信息（层数、参数量等）
+	ModelInfo analyzeModel(const std::string& model_path);
 };

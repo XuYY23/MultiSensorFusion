@@ -151,8 +151,6 @@ std::vector<Detection> generateRandomDetections() {
 }
 
 int main() {
-    std::cout << "多模态多传感器目标检测融合系统示例" << std::endl;
-
     Config::GetInstance().setPositionWeight(0.4);
     Config::GetInstance().setVelocityWeight(0.2);
     Config::GetInstance().setClassWeight(0.2);
@@ -171,8 +169,12 @@ int main() {
     Config::GetInstance().setIncrementalGamma(0.5);
     Config::GetInstance().setDistillLambda1(0.7);
     Config::GetInstance().setDistillLambda2(0.3);
+	Config::GetInstance().setTemperature(5.0);
     Config::GetInstance().setHistoricalAccThreshold(0.9);
     Config::GetInstance().setNewClassAccThreshold(0.85);
+    Config::GetInstance().setTimeGap(300);
+	Config::GetInstance().setTeacherModelPath("teacher_model.pt");
+	Config::GetInstance().setStudentModelPath("student_model.pt");
 
     // 1. 配置传感器校准参数
     std::map<std::string, SensorCalibration> calibrations;

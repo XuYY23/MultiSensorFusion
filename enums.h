@@ -35,6 +35,10 @@ public:
 	virtual bool operator==(const ObjectClass& other) const {
         return other == ObjectClass::UNKNOWN;
     }
+
+    virtual ObjectClass toEnum() const {
+        return ObjectClass::UNKNOWN;
+	}
 };
 
 class PersonObject : public BaseObject {
@@ -46,6 +50,10 @@ public:
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::PERSON;
 	}
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::PERSON;
+    }
 };
 
 class VehicleObject : public BaseObject {
@@ -57,6 +65,10 @@ public:
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::VEHICLE;
     }
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::VEHICLE;
+	}
 };
 
 class BicycleObject : public BaseObject {
@@ -67,6 +79,10 @@ public:
 
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::BICYCLE;
+    }
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::BICYCLE;
     }
 };
 
@@ -79,6 +95,10 @@ public:
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::ANIMAL;
 	}
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::ANIMAL;
+	}
 };
 
 class StaticObstacleObject : public BaseObject {
@@ -90,6 +110,10 @@ public:
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::STATIC_OBSTACLE;
 	}
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::STATIC_OBSTACLE;
+	}
 };
 
 class PotentialNewTypeObject : public BaseObject {
@@ -99,5 +123,9 @@ public:
     }
     bool operator==(const ObjectClass& other) const override {
         return other == ObjectClass::POTENTIAL_NEW_TYPE;
+	}
+
+    ObjectClass toEnum() const override {
+        return ObjectClass::POTENTIAL_NEW_TYPE;
 	}
 };

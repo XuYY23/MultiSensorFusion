@@ -7,6 +7,16 @@
 MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, SensorCalibration>& calibrations) : 
     aligner_(calibrations), 
     use_custom_target_time_(false) {
+
+    // 分离一个增量学习线程，每过N秒学习一次
+    std::thread(
+        [&]() {
+            while (true) {
+				std::this_thread::sleep_for(std::chrono::seconds(Config::GetInstance().getTimeGap())); // 每N秒进行一次增量学习
+            }
+        }
+    ).detach();
+
 }
 
 // 添加新的检测结果
@@ -97,8 +107,8 @@ void MultimodalDetectorSystem::processDetections() {
         }
     }
 
-    // 5、增量学习
-
+    // 5、聚类
+    clustering();
 
     // 清空当前检测队列
     current_detections_.clear();

@@ -23,6 +23,17 @@ class Config {
 	PROPERTY(double, incremental_gamma_, IncrementalGamma)					// 增量训练总损失权重γ
 	PROPERTY(double, distill_lambda1_, DistillLambda1)						// 蒸馏损失λ1（输出层）
 	PROPERTY(double, distill_lambda2_, DistillLambda2)						// 蒸馏损失λ2（隐层）
+	PROPERTY(double, temperature, Temperature)								// 蒸馏温度系数
 	PROPERTY(double, historical_acc_threshold_, HistoricalAccThreshold)		// 历史目标准确率阈值（0.9）
 	PROPERTY(double, new_class_acc_threshold_, NewClassAccThreshold)		// 新目标准确率阈值（0.85）
+	PROPERTY(int, inc_learning_time_gap, TimeGap)							// 增量学习时间间隔（秒）
+	PROPERTY(std::string, teacher_model_path, TeacherModelPath)				// 教师模型路径
+	PROPERTY(std::string, student_model_path, StudentModelPath)				// 学生模型路径
+	PROPERTY(std::string, onnx_export_path, OnnxExportPath)					// onnx导出路径
+	PROPERTY(int, default_model_input_dim, DefaultInputDim)					// 默认模型输入维度
+	PROPERTY(int, default_model_output_dim, DefaultOutputDim)				// 默认模型输出维度
+	PROPERTY(std::string, linear_type, LinearType)							// 全连接层的类型名（torch.nn.modules.linear.Linear）
+	PROPERTY(int, hist_core_sample_num, HistCoreSampleNum)					// 每类历史样本取核心样本数
+	PROPERTY(int, train_epochs, TrainEpochs)								// 训练轮次
+	PROPERTY(double, learning_rate, LearningRate)							// 学习率
 };

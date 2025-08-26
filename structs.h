@@ -172,12 +172,15 @@ struct ClusterResult {
     PseudoLabel pseudo_label;										// 对应的伪标签
 };
 
-// 增量模型配置结构体
-struct IncrementalModelConfig {
-    std::string teacher_model_path;     // 教师模型路径
-    std::string student_model_path;     // 学生模型路径
-    float temperature = 5.0f;           // 知识蒸馏温度系数
-    float lambda1 = 0.7f;               // 输出层蒸馏损失权重
-    float lambda2 = 0.3f;               // 隐层蒸馏损失权重
-    float gamma = 0.5f;                 // 蒸馏损失在总损失中的权重
+// 存储动态解析出的模型信息（维度、层数、层类型）
+struct ModelInfo {
+	int input_dim;                          // 模型输入维度（多模态特征总维度）
+	int output_dim;                         // 模型输出维度（类别数）
+	int total_layer_num;                    // 模型总层数
+	struct LayerInfo {
+		std::string layer_type;				// 层类型（如Linear、ReLU等）
+		int in_dim;							// 层输入维度
+		int out_dim;						// 层输出维度
+	};
+	std::unordered_map<int, LayerInfo> layer_map;		// 每层信息
 };

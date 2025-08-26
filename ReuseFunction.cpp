@@ -1,6 +1,8 @@
 #include "ReuseFunction.h"
 #include "MathUtils.h"
 #include "Config.h"
+#include <torch/torch.h>
+#include <torch/script.h>
 
 // 计算两个检测结果的相似度
 double ReuseFunction::calculateSimilarity(const Detection& a, const Detection& b) {
@@ -218,4 +220,74 @@ void ReuseFunction::generatePseudoLabels(std::vector<ClusterResult>& clusters,
         cluster.pseudo_label = label;
         ++idx;
     }
+}
+
+ModelInfo ReuseFunction::analyzeModel(const std::string& model_path) {
+    ModelInfo model_info;
+
+    try {
+        // 加载JIT模型（无需提前知道结构，直接读模型文件）
+        torch::jit::script::Module model = torch::jit::load(model_path);
+        model.eval(); // 设为推理模式，避免影响模型信息解析
+
+        // 遍历模型所有子模块
+        int layer_idx = 0;
+        for (const auto& [layer_name, sub_module] : model.named_modules()) {
+            // 跳过空模块（避免统计无效层）
+            if (sub_module.parameters().size() == 0) {
+                continue;
+            }
+
+            // 识别层类型（此处以“全连接层Linear”为例，多模态模型核心层）判断当前层是“全连接层”还是其他层（如ReLU激活层）
+            std::string layer_type = sub_module.type()->name().value().name();
+            model_info.layer_map[layer_idx].layer_type = layer_type; // 记录第N层的类型
+            model_info.total_layer_num++; // 总层数+1
+
+            // 推导层的输入输出维度（仅针对全连接层Linear，核心逻辑）
+            // 全连接层的权重shape是：[输出维度, 输入维度]（如权重shape为[512,2048]，则in=2048, out=512）
+            if (layer_type == Config::GetInstance().getLinearType()) {
+                // 获取全连接层的权重参数（类似“这层的计算规则”）
+                torch::Tensor weight = sub_module.attr("weight").toTensor();
+                int layer_in_dim = weight.size(1);  // 权重第2维=输入维度
+                int layer_out_dim = weight.size(0); // 权重第1维=输出维度
+                model_info.layer_map[layer_idx].in_dim = layer_in_dim;
+                model_info.layer_map[layer_idx].out_dim = layer_out_dim;
+
+                // 记录模型整体输入维度（取第一个全连接层的输入维度）
+                if (layer_idx == 0) {
+                    model_info.input_dim = layer_in_dim;
+                }
+                // 记录模型整体输出维度（取最后一个全连接层的输出维度）
+                model_info.output_dim = layer_out_dim;
+            } else if (layer_type == "") {  // 其他层类型
+
+            }
+
+            layer_idx++;
+        }
+
+        // 打印解析结果
+        std::cout << "=== 模型解析结果 ===" << std::endl;
+		std::cout << "模型路径：" << model_path << std::endl;
+        std::cout << "模型总层数：" << model_info.total_layer_num << std::endl;
+        std::cout << "模型输入维度（多模态特征总维度）：" << model_info.input_dim << std::endl;
+        std::cout << "模型输出维度（类别数）：" << model_info.output_dim << std::endl;
+        for (int i = 0; i < model_info.total_layer_num; i++) {
+            std::cout << "第" 
+                      << i + 1 
+                      << "层：类型=" 
+                      << model_info.layer_map[i].layer_type
+                      << "，输入维度=" << model_info.layer_map[i].in_dim
+                      << "，输出维度=" << model_info.layer_map[i].out_dim 
+                      << std::endl;
+        }
+
+    } catch (const c10::Error& e) {
+        std::cerr << "解析模型失败：" << e.what() << std::endl;
+        // 失败时用Config默认参数
+        model_info.input_dim = Config::GetInstance().getDefaultInputDim();
+        model_info.output_dim = Config::GetInstance().getDefaultOutputDim(); 
+    }
+
+    return model_info;
 }
