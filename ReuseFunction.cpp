@@ -1,8 +1,8 @@
 #include "ReuseFunction.h"
 #include "MathUtils.h"
 #include "Config.h"
-#include <torch/torch.h>
 #include <torch/script.h>
+#include <fstream>
 
 // 计算两个检测结果的相似度
 double ReuseFunction::calculateSimilarity(const Detection& a, const Detection& b) {
@@ -243,10 +243,10 @@ ModelInfo ReuseFunction::analyzeModel(const std::string& model_path) {
             model_info.layer_map[layer_idx].layer_type = layer_type; // 记录第N层的类型
             model_info.total_layer_num++; // 总层数+1
 
-            // 推导层的输入输出维度（仅针对全连接层Linear，核心逻辑）
+            // 推导层的输入输出维度
             // 全连接层的权重shape是：[输出维度, 输入维度]（如权重shape为[512,2048]，则in=2048, out=512）
             if (layer_type == Config::GetInstance().getLinearType()) {
-                // 获取全连接层的权重参数（类似“这层的计算规则”）
+                // 获取全连接层的权重参数
                 torch::Tensor weight = sub_module.attr("weight").toTensor();
                 int layer_in_dim = weight.size(1);  // 权重第2维=输入维度
                 int layer_out_dim = weight.size(0); // 权重第1维=输出维度
@@ -283,11 +283,59 @@ ModelInfo ReuseFunction::analyzeModel(const std::string& model_path) {
         }
 
     } catch (const c10::Error& e) {
-        std::cerr << "解析模型失败：" << e.what() << std::endl;
-        // 失败时用Config默认参数
-        model_info.input_dim = Config::GetInstance().getDefaultInputDim();
-        model_info.output_dim = Config::GetInstance().getDefaultOutputDim(); 
+        throw e;
     }
 
     return model_info;
+}
+
+torch::Tensor ReuseFunction::convertFeatureToTensor(const FeatureVector& feat, int model_input_dim) {
+    if (model_input_dim <= 0) {
+        model_input_dim = Config::GetInstance().getDefaultInputDim();
+    }
+    // 存储所有模态的特征
+    std::vector<float> all_feats;
+
+    // 拼接视觉特征
+    all_feats.insert(all_feats.end(), feat.visual_features.begin(), feat.visual_features.end());
+    // 拼接雷达特征
+    all_feats.insert(all_feats.end(), feat.radar_features.begin(), feat.radar_features.end());
+    // 拼接音频特征
+    all_feats.insert(all_feats.end(), feat.audio_features.begin(), feat.audio_features.end());
+	// 拼接形状特征
+    all_feats.insert(all_feats.end(), feat.shape_features.begin(), feat.shape_features.end());
+    // 拼接运动特征
+    all_feats.insert(all_feats.end(), feat.motion_features.begin(), feat.motion_features.end());
+
+    // 补零到总维度（确保每个样本的特征维度一致，模型才能处理）
+    while (all_feats.size() < model_input_dim) {
+        all_feats.push_back(0.0f);
+    }
+
+    // 截断超出维度的部分（避免特征过长）
+    if (all_feats.size() > model_input_dim) {
+        all_feats.resize(model_input_dim);
+    }
+
+    // 转换为Tensor（模型能处理的格式）：1个样本，total_dim维
+    return torch::from_blob(all_feats.data(), { 1, model_input_dim }, torch::kFloat32);
+}
+
+bool ReuseFunction::loadJsonConfig(const std::string& file_path, json& config) {
+    try {
+        std::ifstream ifs(file_path);
+        if (!ifs.is_open()) {
+            std::cerr << "无法打开JSON文件: " << file_path << std::endl;
+            return false;
+        }
+
+        ifs >> config;  // 从文件流读取并解析JSON
+        ifs.close();
+
+        std::cout << "JSON文件读取成功: " << file_path << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "JSON解析错误: " << e.what() << std::endl;
+        return false;
+    }
 }

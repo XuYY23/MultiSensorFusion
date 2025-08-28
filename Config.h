@@ -15,7 +15,7 @@ class Config {
 	PROPERTY(double, conf_threshold, ConfThreshold)							// 置信度阈值
 	PROPERTY(double, kl_div_threshold_, KlDivThreshold)						// KL散度阈值
 	PROPERTY(double, new_target_cosine_thresh_, NewTargetCosineThresh)		// 新目标余弦相似度阈值
-	PROPERTY(int, new_sample_cluster_threshold_, NewSampleClusterThreshold)	// 聚类触发样本数（30）
+	PROPERTY(int, new_sample_cluster_threshold_, NewSampleClusterThreshold)	// 聚类触发样本数
 	PROPERTY(double, dpc_rho_min_, DpcRhoMin)								// DPC局部密度最小值
 	PROPERTY(double, dpc_delta_min_, DpcDeltaMin)							// DPC相对距离最小值
 	PROPERTY(double, d_c, CutDistance)										// DPC截断距离
@@ -24,16 +24,22 @@ class Config {
 	PROPERTY(double, distill_lambda1_, DistillLambda1)						// 蒸馏损失λ1（输出层）
 	PROPERTY(double, distill_lambda2_, DistillLambda2)						// 蒸馏损失λ2（隐层）
 	PROPERTY(double, temperature, Temperature)								// 蒸馏温度系数
-	PROPERTY(double, historical_acc_threshold_, HistoricalAccThreshold)		// 历史目标准确率阈值（0.9）
-	PROPERTY(double, new_class_acc_threshold_, NewClassAccThreshold)		// 新目标准确率阈值（0.85）
-	PROPERTY(int, inc_learning_time_gap, TimeGap)							// 增量学习时间间隔（秒）
+	PROPERTY(double, historical_acc_threshold_, HistoricalAccThreshold)		// 历史目标准确率阈值
+	PROPERTY(double, new_class_acc_threshold_, NewClassAccThreshold)		// 新目标准确率阈值
+	PROPERTY(int, inc_learning_time_gap, TimeGap)							// 增量学习线程每次睡眠时长（秒）
+	PROPERTY(int, inc_learning_num_gap, NumGap)								// 增量学习函数触发样本数
 	PROPERTY(std::string, teacher_model_path, TeacherModelPath)				// 教师模型路径
 	PROPERTY(std::string, student_model_path, StudentModelPath)				// 学生模型路径
-	PROPERTY(std::string, onnx_export_path, OnnxExportPath)					// onnx导出路径
 	PROPERTY(int, default_model_input_dim, DefaultInputDim)					// 默认模型输入维度
 	PROPERTY(int, default_model_output_dim, DefaultOutputDim)				// 默认模型输出维度
 	PROPERTY(std::string, linear_type, LinearType)							// 全连接层的类型名（torch.nn.modules.linear.Linear）
 	PROPERTY(int, hist_core_sample_num, HistCoreSampleNum)					// 每类历史样本取核心样本数
 	PROPERTY(int, train_epochs, TrainEpochs)								// 训练轮次
 	PROPERTY(double, learning_rate, LearningRate)							// 学习率
+	PROPERTY(std::string, hidden_feat, HiddenFeat)							// 隐层特征名
+	PROPERTY(std::string, onnx_import_path, OnnxImportPath)					// onnx导入路径
+	PROPERTY(std::string, onnx_export_path, OnnxExportPath)					// onnx导出路径
+	PROPERTY(std::string, onnx_input_name, OnnxInputName)					// 导出onnx模型的输入名
+	PROPERTY(std::string, onnx_output_name, OnnxOutputName)					// 导出onnx模型的输出名
+	PROPERTY(std::string, export_model_py_file_path, ExportModelPyFilePath)	// 导出onnx模型的python脚本路径
 };

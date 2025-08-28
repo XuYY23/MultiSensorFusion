@@ -1,5 +1,6 @@
 #include "MultimodalDetectorSystem.h"
 #include "Config.h"
+#include "ReuseFunction.h"
 #include <iostream>
 #include <random>
 
@@ -150,31 +151,50 @@ std::vector<Detection> generateRandomDetections() {
     return detections;
 }
 
+bool init() {
+    std::string json_file = "D:\\xyy\\code\\cpp\\MultiSensorFusion\\config\\multi_sensor_fusion_config.json";
+    json config;
+    if (!ReuseFunction::GetInstance().loadJsonConfig(json_file, config)) {
+        return false;
+    }
+
+    try {
+        Config::GetInstance().setPositionWeight(config["position_weight"]);
+        Config::GetInstance().setVelocityWeight(0.2);
+        Config::GetInstance().setClassWeight(0.2);
+        Config::GetInstance().setFeatureWeight(0.2);
+        Config::GetInstance().setMaxPositionDistance(10.0);
+        Config::GetInstance().setMaxVelocityDiff(5.0);
+        Config::GetInstance().setMinSimilarityThreshold(0.5);
+        Config::GetInstance().setConfThreshold(0.5);
+        Config::GetInstance().setKlDivThreshold(0.1);
+        Config::GetInstance().setNewTargetCosineThresh(0.6);
+        Config::GetInstance().setNewSampleClusterThreshold(30);
+        Config::GetInstance().setDpcRhoMin(5.0);
+        Config::GetInstance().setDpcDeltaMin(0.3);
+        Config::GetInstance().setCutDistance(0.25);
+        Config::GetInstance().setIsolatedPointMin(0.75);
+        Config::GetInstance().setIncrementalGamma(0.5);
+        Config::GetInstance().setDistillLambda1(0.7);
+        Config::GetInstance().setDistillLambda2(0.3);
+        Config::GetInstance().setTemperature(5.0);
+        Config::GetInstance().setHistoricalAccThreshold(0.9);
+        Config::GetInstance().setNewClassAccThreshold(0.85);
+        Config::GetInstance().setTimeGap(300);
+        Config::GetInstance().setNumGap(config["num_gap"]);
+        Config::GetInstance().setTeacherModelPath("teacher_model.pt");
+        Config::GetInstance().setStudentModelPath("student_model.pt");
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 int main() {
-    Config::GetInstance().setPositionWeight(0.4);
-    Config::GetInstance().setVelocityWeight(0.2);
-    Config::GetInstance().setClassWeight(0.2);
-    Config::GetInstance().setFeatureWeight(0.2);
-    Config::GetInstance().setMaxPositionDistance(10.0);
-    Config::GetInstance().setMaxVelocityDiff(5.0);
-    Config::GetInstance().setMinSimilarityThreshold(0.5);
-    Config::GetInstance().setConfThreshold(0.5);
-    Config::GetInstance().setKlDivThreshold(0.1);
-    Config::GetInstance().setNewTargetCosineThresh(0.6);
-    Config::GetInstance().setNewSampleClusterThreshold(30);
-    Config::GetInstance().setDpcRhoMin(5.0);
-    Config::GetInstance().setDpcDeltaMin(0.3);
-    Config::GetInstance().setCutDistance(0.25);
-    Config::GetInstance().setIsolatedPointMin(0.75);
-    Config::GetInstance().setIncrementalGamma(0.5);
-    Config::GetInstance().setDistillLambda1(0.7);
-    Config::GetInstance().setDistillLambda2(0.3);
-	Config::GetInstance().setTemperature(5.0);
-    Config::GetInstance().setHistoricalAccThreshold(0.9);
-    Config::GetInstance().setNewClassAccThreshold(0.85);
-    Config::GetInstance().setTimeGap(300);
-	Config::GetInstance().setTeacherModelPath("teacher_model.pt");
-	Config::GetInstance().setStudentModelPath("student_model.pt");
+    if (init() == false) {
+        std::cout << "load config failure" << std::endl;
+        return -1;
+    }
 
     // 1. 配置传感器校准参数
     std::map<std::string, SensorCalibration> calibrations;

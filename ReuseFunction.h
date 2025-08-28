@@ -1,6 +1,7 @@
 #pragma once
 
 #include "structs.h"
+#include <torch/torch.h>
 
 class ReuseFunction {
 	void init() {}
@@ -29,4 +30,10 @@ public:
 
 	// 分析模型文件，返回模型信息（层数、参数量等）
 	ModelInfo analyzeModel(const std::string& model_path);
+
+	// 将FeatureVector（特征库的特征格式）转为模型能读的Tensor
+	torch::Tensor convertFeatureToTensor(const FeatureVector& feat, int model_input_dim = -1);
+
+	// 加载JSON配置文件
+	bool loadJsonConfig(const std::string& file_path, json& config);
 };

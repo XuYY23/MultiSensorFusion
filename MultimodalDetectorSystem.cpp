@@ -3,6 +3,7 @@
 #include "FeatureDataBase.h"
 #include "ReuseFunction.h"
 #include "MathUtils.h"
+#include "IncrementalLearning.h"
 
 MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, SensorCalibration>& calibrations) : 
     aligner_(calibrations), 
@@ -12,6 +13,9 @@ MultimodalDetectorSystem::MultimodalDetectorSystem(const std::map<std::string, S
     std::thread(
         [&]() {
             while (true) {
+                if (FeatureDataBase::GetInstance().getNewCategories().size() >= Config::GetInstance().getNumGap()) {
+                    IncrementalLearning::GetInstance().startIncrementalTraining();
+                }
 				std::this_thread::sleep_for(std::chrono::seconds(Config::GetInstance().getTimeGap())); // 每N秒进行一次增量学习
             }
         }

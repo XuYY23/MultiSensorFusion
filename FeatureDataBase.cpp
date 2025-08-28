@@ -57,11 +57,6 @@ std::vector<ClusterResult> FeatureDataBase::performDPCClustering() {
         }
     }
 
-    //if (cluster_center.size() == 0) {
-    //    std::cerr << "Warning: cluster_center size is 0" << std::endl;
-    //    return {};
-    //}
-
     // 分配样本到族中心
     const double isolated_point_min = Config::GetInstance().getIsolatedPointMin();
     for (size_t i = 0; i < size; ++i) {
